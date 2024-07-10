@@ -6,7 +6,7 @@
     <title>Version 2.0</title>
     <style>
         body {
-            background-image: url('https://github.com/Jaja091202/Water-Dashboard/blob/main/Dashboard%20HD.png?raw=true');
+            background-image: url('https://github.com/Jaja091202/Water-Dashboard/blob/main/Dashboard%20(2).png?raw=true');
             background-size: cover;
             background-repeat: no-repeat;
             margin-top: 0px;
@@ -34,7 +34,7 @@
     </style>
   </head>
   <body>
-    <div id="dashboard" class="content active">
+    <div id="dashboard" class="content ">
       <style>
             #chart {
                 width: 400px;
@@ -289,14 +289,14 @@
         </tbody>
       </table>
     </div>
-    <div id="settings" class="content ">
+    <div id="settings" class="content active">
       <table style="width: 1526px; height: 712px;" border="0">
         <tbody>
           <tr>
             <td style="height: 513px; width: 252px;"><button onclick="showPage('dashboard')"
 
-                style="padding: 8px; margin-bottom: 401.5px; width: 178px; margin-left: -5px; height: 38px; margin-top: -13.75px;">
-              </button>&nbsp;<br>
+                style="padding: 8px; margin-bottom: 401.5px; width: 178px; margin-left: -5px; height: 51.7778px; margin-top: 40.6889px;">
+                </button>&nbsp;<br>
             </td>
             <td style="height: 513px; margin-left: -81px; width: 414px;"><br>
             </td>
