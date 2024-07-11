@@ -1,0 +1,497 @@
+#include <ESP8266WiFi.h>
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+
+const char* ssid = "Jaja";
+const char* password = "jamessss";
+
+#define LED_BUILTIN 16
+#define SENSOR 2
+
+long currentMillis = 0;
+long previousMillis = 0;
+int interval = 1000;
+boolean ledState = LOW;
+float calibrationFactor = 4.5;
+volatile byte pulseCount;
+byte pulse1Sec = 0;
+float flowRate;
+unsigned long flowMilliLitres;
+unsigned int totalMilliLitres;
+float flowLitres;
+float totalLitres;
+
+AsyncWebServer server(80);
+
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Version 2.0</title>
+    <style>
+        body {
+            background-image: url('https://github.com/Jaja091202/Water-Dashboard/blob/main/WM%20Dashboard.png?raw=true');
+            background-size: cover;
+            background-repeat: no-repeat;
+            margin-top: 0px;
+            height: 657px;
+            width: 1382.4px;
+        }
+        .content {
+            display: none;
+            text-align: center;
+        }
+        .active {
+            display: block;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: transparent;
+            border: none;
+        }
+        .button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+  </head>
+  <body>
+    <div id="dashboard" class="content active">
+      <style>
+            #chart {
+                width: 400px;
+                height: 200px;
+            }
+            .bar {
+                fill: steelblue;
+                width: 40px;
+                margin: 1px;
+            }
+            .tick line, path {
+                stroke: white !important;
+            }
+            .bar-label {
+                text-anchor: middle;
+                fill: white;
+                font-family: sans-serif;
+            }
+            .axis text {
+                fill: white !important;
+            }
+            .tick text {
+                fill: white;
+            }
+            .axis text {
+                font-family: sans-serif;
+                font-size: 12px;
+                fill: white;
+            }
+            .axis path, .axis line {
+                stroke: white;
+            }
+            .tick text {
+                fill: white;
+            }
+        </style>
+      <table style="width: 1528px; height: 710px;" border="0">
+        <tbody style="height: 704.4px;">
+          <tr>
+            <td style="width: 221px; height: 416.556px;"> <button onclick="showPage('settings')"
+
+                style="margin-left: 1.25px; width: 169px; height: 42.25px; margin-top: 8.75px;">
+              </button> <br>
+            </td>
+            <td style="height: 416.556px; width: 391px; margin-left: 50px;" rowspan="1"
+
+              colspan="2">
+              <title>D3 Chart</title>
+              <div id="chart" style="margin-top: 170.005px; margin-left: 103.339px;"></div>
+              <script src="https://d3js.org/d3.v7.min.js"></script>
+              <script>
+                const data = [
+                    { date: "07-03", volume: 15 },
+                    { date: "07-04", volume: 12 },
+                    { date: "07-05", volume: 18 },
+                    { date: "07-06", volume: 22 },
+                    { date: "07-07", volume: 16 },
+                    { date: "07-08", volume: 20 },
+                    { date: "07-09", volume: 14 }
+                ];
+                const margin = { top: 20, right: 20, bottom: 30, left: 40 };
+                const width = 650 - margin.left - margin.right;
+                const height = 200 - margin.top - margin.bottom;
+
+                function createBarChart() {
+                    const svg = d3.select("#chart").append("svg")
+                        .attr("width", width + margin.left + margin.right)
+                        .attr("height", height + margin.top + margin.bottom)
+                        .append("g")
+                        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+                    const x = d3.scaleBand().range([0, width]).padding(0.1);
+                    const y = d3.scaleLinear().range([height, 0]);
+
+                    x.domain(data.map(d => d.date));
+                    y.domain([0, d3.max(data, d => d.volume)]);
+
+                    svg.selectAll(".bar")
+                        .data(data)
+                        .enter().append("rect")
+                        .attr("class", "bar")
+                        .attr("x", d => x(d.date) + x.bandwidth() / 4)
+                        .attr("width", x.bandwidth() / 2)
+                        .attr("y", d => y(d.volume))
+                        .attr("height", d => height - y(d.volume));
+
+                    svg.append("g")
+                        .attr("transform", "translate(0," + height + ")")
+                        .call(d3.axisBottom(x))
+                        .selectAll(".tick text")
+                        .style("fill", "white");
+
+                    svg.append("g")
+                        .call(d3.axisLeft(y))
+                        .selectAll(".tick line")
+                        .style("stroke", "white");
+
+                    svg.selectAll(".axis text").style("fill", "white");
+                    svg.selectAll(".axis path, .axis line").style("stroke", "white");
+                    svg.selectAll(".tick text").style("fill", "white");
+                }
+
+                createBarChart();
+              </script> <br>
+            </td>
+            <td style="height: 416.556px; width: 405px; margin-left: 12px; text-align: center;">
+              <h2 style="width: 350px; height: 35.1111px; margin-top: 112.206px; margin-left: 49.4389px; font-size: 45px; text-align: center; color: white;">
+                ₱<span id="calculatedAmount">0.00</span> </h2>
+              <p><br>
+              </p>
+              <p style="text-align: left; margin-left: 58.8944px; color:white;">
+                <span class="OYPEnA text-decoration-none text-strikethrough-none"
+
+                  id="dateRange1"> June 01, 2024 - July 01, 2024 </span> </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="height: 279.333px;"><br>
+            </td>
+            <td style="height: 279.333px; width: 387px; margin-left: 21px; text-align: center;">
+              <h2 style="width: 305.556px; height: 38.8889px; margin-top: 46.6444px; margin-left: 82.7777px; font-size: 40px; text-align: center; color: white;">
+                <span id="liters">0.00</span> l </h2>
+              <p style="margin-top: 3.77219px; height: 22.1111px; margin-left: 80px; width: 305.778px; color:white;">
+                <span class="OYPEnA text-decoration-none text-strikethrough-none"
+
+                  id="dateRange2"> As of July 01 - 08, 2024 </span> </p>
+            </td>
+            <td style="height: 279.333px; margin-left: 20px; width: 352px;">
+              <style>
+        #pieChart {
+            height: 130px !important;
+            width: 130px !important;
+        }
+    </style> <canvas id="pieChart" style="margin-top: 85px; margin-left: 45.5444px;"></canvas>
+              <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+              <script>
+        let waterQuota = 100; // Total water quota
+        let waterUsed = 100;   // Water already used
+        let pieChart; // Variable to store the chart instance
+
+        function updateChart() {
+    const waterRemaining = waterQuota - waterUsed;
+    const ctx = document.getElementById('pieChart').getContext('2d');
+
+    // If chart already exists, destroy it before creating a new one
+    if (pieChart) {
+        pieChart.destroy();
+    }
+
+    pieChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            datasets: [{
+                data: [waterRemaining, waterUsed],
+                backgroundColor: ['#31356E', '#41B8D5'],
+            }]
+        },
+        options: {
+            animation: false, // Disable animation
+            layout: {
+                padding: 0
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    enabled: false
+                }
+            }
+        }
+    });
+
+    const percentageRemaining = (waterRemaining / waterQuota) * 100;
+    const percentageElement = document.getElementById('percentage');
+    percentageElement.textContent = `${percentageRemaining.toFixed(0)}%`;
+}
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const percentageElement = document.createElement('div');
+            percentageElement.id = 'percentage';
+            percentageElement.style = "position: absolute; width: 100; top: 74%; left: 59.5%; font-size: 45px; text-align: center; color: white;";
+            document.body.appendChild(percentageElement);
+
+            updateChart();
+        });
+    </script> <br>
+            </td>
+            <td style="height: 279.333px; margin-left: 10px; margin-top: 30px; text-align: center;">
+              <style>
+                            .log {
+                                padding: 12px;
+                                margin-bottom: 5px;
+                                display: flex;
+                                justify-content: space-between;
+                                width: 310px;
+                                height: var(--log-height, 5px);
+                                margin-top: var(--log-margin-top, 1px);
+                                margin-left: 44px;
+                                margin-bottom: var(--log-margin-bottom, -5px);
+                                margin-right: var(--log-margin-right, 0);
+                                color: white;
+                            }
+                            .log-date, .log-time {
+                                white-space: nowrap;
+                            }
+                            .valve-status {
+                                cursor: pointer;
+                                text-align: center;
+                                padding: 28px;
+                                margin-bottom: 0px;
+                                margin-top: 26px;
+                                margin-left: -15px;
+                                font-size: 25px;
+                                text-align: center;
+                                color: white;
+                            }
+                        </style>
+              <div class="logs"></div>
+              <div class="valve-status" id="valveStatus">Turn ON Valve</div>
+              <script>
+                            const valveStatus = document.getElementById('valveStatus');
+                            const logs = document.querySelector('.logs');
+                            let logsArray = [
+                                { start: '-', end: '-' },
+                                { start: '-', end: '-' },
+                                { start: '-', end: '-' },
+                                { start: '-', end: '-' },
+                                { start: '-', end: '-' },
+                                { start: '-', end: '-' },
+                                { start: '-', end: '-' }
+                            ];
+                            let valveOn = false;
+                            valveStatus.addEventListener('click', function() {
+                                valveOn = !valveOn;
+                                const date = new Date();
+                                const dateString = date.toLocaleDateString();
+                                const timeString = date.toLocaleTimeString();
+                                const logText = `${dateString} ${timeString}`;
+                                if (valveOn) {
+                                    logsArray.push({ start: logText, end: '-' });
+                                    valveStatus.textContent = "Turn OFF Valve";
+                                } else {
+                                    logsArray[logsArray.length - 1].end = timeString.replace(/ [AP]M/, '');
+                                    valveStatus.textContent = "Turn ON Valve";
+                                }
+                                if (logsArray.length > 7) {
+                                    logsArray.shift();
+                                }
+                                displayLogs();
+                                localStorage.setItem('logs', JSON.stringify(logsArray));
+                            });
+                            function displayLogs() {
+                                logs.innerHTML = '';
+                                for (let log of logsArray) {
+                                    const logDiv = document.createElement('div');
+                                    logDiv.classList.add('log');
+                                    const dateSpan = document.createElement('span');
+                                    dateSpan.textContent = log.start.split(' ')[0];
+                                    dateSpan.classList.add('log-date');
+                                    const timeSpan = document.createElement('span');
+                                    timeSpan.textContent = `${log.start.split(' ')[1] || '-'} - ${log.end || '-'}`;
+                                    timeSpan.classList.add('log-time');
+                                    logDiv.appendChild(dateSpan);
+                                    logDiv.appendChild(timeSpan);
+                                    logs.appendChild(logDiv);
+                                }
+                            }
+                            const storedLogs = localStorage.getItem('logs');
+                            if (storedLogs) {
+                                logsArray = JSON.parse(storedLogs);
+                            }
+                            displayLogs();
+                        </script> </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="settings" class="content ">
+      <table style="width: 1526px; height: 712px;" border="0">
+        <tbody>
+          <tr>
+            <td style="height: 513px; width: 252px;"><button onclick="showPage('dashboard')"
+
+                style="padding: 8px; margin-bottom: 401.5px; width: 178px; margin-left: -5px; height: 51.7778px; margin-top: 40.6889px;">
+              </button>&nbsp;<br>
+            </td>
+            <td style=" height: 513px; margin-left: -81px; width: 414px;"> <label
+
+                for="waterQuotaInput" style="color: white;">Water Quota:</label>
+              <input id="waterQuotaInput" value="200" type="number"><br>
+              <br>
+              <br>
+              <b><button onclick="updateWaterQuota()" style="position: absolute; margin-top: 201px; top: 433px; left: 433px; font-family: Cambria Math;">SAVE</button></b>
+              <script>function updateWaterQuota() {
+                const newQuota = document.getElementById('waterQuotaInput').value;
+                waterQuota = parseInt(newQuota, 10);
+                updateChart();
+                }
+              </script> </td>
+            <td style="height: 513px; width: 401.067px;"><br>
+            </td>
+            <td style="height: 513px; margin-left: -24px; width: 413.867px;"><br>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <script>
+        function showPage(page) {
+      document.querySelectorAll('.content').forEach(function(el) {
+        el.classList.remove('active');
+      });
+      document.getElementById(page).classList.add('active');
+      if (page === 'dashboard') {
+        document.body.style.backgroundImage = 'url("https://github.com/Jaja091202/Water-Dashboard/blob/main/WM%20Dashboard.png?raw=true")';
+        document.getElementById('percentage').style.display = "block"; // Show it on the dashboard
+      } else if (page === 'settings') {
+        document.body.style.backgroundImage = 'url("https://github.com/Jaja091202/Water-Dashboard/blob/main/Settings.png?raw=true")';
+        document.getElementById('percentage').style.display = "none"; // Hide it on settings
+      }
+    }
+      // Variables
+        var liters = 0.00; // Initialize liters with a default value
+
+    
+        var dateRange1 = 'June 01, 2024 - July 01, 2024'; // Change this value to update the first date range
+        var dateRange2 = 'As of July 01 - 08, 2024'; // Change this value to update the second date range
+
+        function updateTotalLitres() {
+    fetch("/totalLitres")
+        .then(response => response.text())
+        .then(data => {
+            const totalLitres = parseFloat(data); // Parse fetched data as a float
+            liters = totalLitres; // Update liters with fetched value
+            waterUsed = totalLitres; // Update waterUsed with fetched value
+            updateDisplayedValues(); // Call function to update displayed values
+            updateChart(); // Update the pie chart with new waterUsed value
+        })
+        .catch(error => {
+            console.error('Error fetching totalLitres:', error);
+        });
+
+    }
+
+    // Function to update displayed values
+    function updateDisplayedValues() {
+        // Calculations based on updated liters value
+        var calculatedAmount = (liters * 0.06).toFixed(2);
+
+        // Updating the HTML with variables
+        document.getElementById('liters').innerText = liters.toFixed(2);
+        document.getElementById('calculatedAmount').innerText = calculatedAmount;
+    }
+
+    // Fetch totalLitres initially and then at intervals
+    updateTotalLitres(); // Fetch initially
+    setInterval(updateTotalLitres, 1000); // Fetch every 1 second
+
+        
+
+    
+      document.getElementById('dateRange1').innerText = dateRange1;
+        document.getElementById('dateRange2').innerText = dateRange2;
+    </script>
+  </body>
+</html>
+)rawliteral"; 
+
+void IRAM_ATTR pulseCounter() {
+    pulseCount++;
+}
+
+void setup() {
+    Serial.begin(115200);
+
+    pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(SENSOR, INPUT_PULLUP);
+
+    pulseCount = 0;
+    flowRate = 0.0;
+    flowMilliLitres = 0;
+    totalMilliLitres = 0;
+    previousMillis = 0;
+
+    attachInterrupt(digitalPinToInterrupt(SENSOR), pulseCounter, FALLING);
+
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(1000);
+        Serial.println("Connecting to WiFi...");
+    }
+    Serial.println("Connected to WiFi");
+
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/html", index_html);
+    });
+
+    server.on("/totalLitres", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/plain", String(totalLitres).c_str());
+    });
+
+    server.begin();
+    Serial.println("HTTP server started");
+    Serial.println(WiFi.localIP());
+}
+
+void loop() {
+    currentMillis = millis();
+    if (currentMillis - previousMillis > interval) {
+        pulse1Sec = pulseCount;
+        pulseCount = 0;
+
+        flowRate = ((1000.0 / (millis() - previousMillis)) * pulse1Sec) / calibrationFactor;
+        previousMillis = millis();
+
+        flowMilliLitres = (flowRate / 60) * 1000;
+        flowLitres = (flowRate / 60);
+
+        totalMilliLitres += flowMilliLitres;
+        totalLitres += flowLitres;
+
+        Serial.print("Flow rate: ");
+        Serial.print(flowRate);
+        Serial.print(" L/min");
+        Serial.print("\t");
+
+        Serial.print("Output Liquid Quantity: ");
+        Serial.print(totalMilliLitres);
+        Serial.print(" mL / ");
+        Serial.print(totalLitres);
+        Serial.println(" L");
+    }
+}
