@@ -141,26 +141,28 @@
               </script> <br>
             </td>
             <td style="height: 416.556px; width: 405px; margin-left: 12px; text-align: center;">
-              <h2 style="width: 350px; height: 35.1111px; margin-top: 112.206px; margin-left: 49.4389px; font-size: 45px; text-align: center; color: white;">₱23554.32</h2>
-              <p> <br>
-              </p>
-              <p style="text-align: left; margin-left: 58.8944px;"> <span class="OYPEnA text-decoration-none text-strikethrough-none"
-
-                  style="color: rgb(255, 255, 255); font-weight: 700; font-style: normal;">
-                  June 01, 2024 - July 01, 2024 </span> </p>
+                <h2 style="width: 350px; height: 35.1111px; margin-top: 112.206px; margin-left: 49.4389px; font-size: 45px; text-align: center; color: white;">
+                    ₱<span id="calculatedAmount">0.00</span>
+                </h2>
+                <p><br></p>
+                <p style="text-align: left; margin-left: 58.8944px; color:white;">
+                    <span class="OYPEnA text-decoration-none text-strikethrough-none" id="dateRange1">
+                        June 01, 2024 - July 01, 2024
+                    </span>
+                </p>
             </td>
           </tr>
           <tr>
-            <td style="height: 279.333px;"> <br>
-            </td>
+            <td style="height: 279.333px;"><br></td>
             <td style="height: 279.333px; width: 387px; margin-left: 21px; text-align: center;">
-              <h2 style="width: 305.556px; height: 38.8889px; margin-top: 46.6444px; margin-left: 82.7777px; font-size: 40px; text-align: center; color: white;">11234.32
-                m³</h2>
-              <p style="margin-top: 3.77219px; height: 22.1111px; margin-left: 80px; width: 305.778px;">
-                <span class="OYPEnA text-decoration-none text-strikethrough-none"
-
-                  style="color: rgb(255, 255, 255); font-weight: 700; font-style: normal;">
-                  As of July 01 - 08, 2024 </span> </p>
+                <h2 style="width: 305.556px; height: 38.8889px; margin-top: 46.6444px; margin-left: 82.7777px; font-size: 40px; text-align: center; color: white;">
+                    <span id="liters">0.00</span> l
+                </h2>
+                <p style="margin-top: 3.77219px; height: 22.1111px; margin-left: 80px; width: 305.778px; color:white;">
+                    <span class="OYPEnA text-decoration-none text-strikethrough-none" id="dateRange2">
+                        As of July 01 - 08, 2024
+                    </span>
+                </p>
             </td>
             <td style="height: 279.333px; margin-left: 20px; width: 352px;">
               <style>
@@ -356,6 +358,19 @@
         document.getElementById('percentage').style.display = "none"; // Hide it on settings
       }
     }
+      // Variables
+        var liters = 6; // Change this value to update liters
+        var dateRange1 = 'June 01, 2024 - July 01, 2024'; // Change this value to update the first date range
+        var dateRange2 = 'As of July 01 - 08, 2024'; // Change this value to update the second date range
+
+        // Calculations
+        var calculatedAmount = (liters * 0.06).toFixed(2);
+
+        // Updating the HTML with variables
+        document.getElementById('liters').innerText = liters;
+        document.getElementById('calculatedAmount').innerText = calculatedAmount;
+        document.getElementById('dateRange1').innerText = dateRange1;
+        document.getElementById('dateRange2').innerText = dateRange2;
     </script>
     
   </body>
