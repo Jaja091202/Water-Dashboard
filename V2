@@ -6,7 +6,7 @@
     <title>Version 2.0</title>
     <style>
         body {
-            background-image: url('https://github.com/Jaja091202/Water-Dashboard/blob/main/Dashboard%20HD.png?raw=true');
+            background-image: url('https://github.com/Jaja091202/Water-Dashboard/blob/main/WM%20Dashboard.png?raw=true');
             background-size: cover;
             background-repeat: no-repeat;
             margin-top: 0px;
@@ -172,7 +172,7 @@
               <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
               <script>
         let waterQuota = 100; // Total water quota
-        let waterUsed = 93;   // Water already used
+        let waterUsed = 100;   // Water already used
         let pieChart; // Variable to store the chart instance
 
         function updateChart() {
@@ -222,7 +222,6 @@
         });
     </script> <br>
             </td>
-            
             <td style="height: 279.333px; margin-left: 10px; margin-top: 30px; text-align: center;">
               <style>
                             .log {
@@ -322,12 +321,14 @@
                 style="padding: 8px; margin-bottom: 401.5px; width: 178px; margin-left: -5px; height: 51.7778px; margin-top: 40.6889px;">
               </button>&nbsp;<br>
             </td>
-            <td style="height: 513px; margin-left: -81px; width: 414px;"> <label
+            <td style=" height: 513px; margin-left: -81px; width: 414px;"> <label
 
                 for="waterQuotaInput" style="color: white;">Water Quota:</label>
-              <input id="waterQuotaInput" value="200" type="number"> <button onclick="updateWaterQuota()">Save</button>
-              <script>
-                function updateWaterQuota() {
+              <input id="waterQuotaInput" value="200" type="number"><br>
+              <br>
+              <br>
+              <b><button onclick="updateWaterQuota()" style="position: absolute; margin-top: 201px; top: 433px; left: 433px; font-family: Cambria Math;">SAVE</button></b>
+              <script>function updateWaterQuota() {
                 const newQuota = document.getElementById('waterQuotaInput').value;
                 waterQuota = parseInt(newQuota, 10);
                 updateChart();
@@ -348,13 +349,14 @@
       });
       document.getElementById(page).classList.add('active');
       if (page === 'dashboard') {
-        document.body.style.backgroundImage = 'url("https://github.com/Jaja091202/Water-Dashboard/blob/main/Dashboard%20HD.png?raw=true")';
+        document.body.style.backgroundImage = 'url("https://github.com/Jaja091202/Water-Dashboard/blob/main/WM%20Dashboard.png?raw=true")';
         document.getElementById('percentage').style.display = "block"; // Show it on the dashboard
       } else if (page === 'settings') {
-        document.body.style.backgroundImage = 'url("https://github.com/Jaja091202/Water-Dashboard/blob/main/Dashboard%20(2).png?raw=true")';
+        document.body.style.backgroundImage = 'url("https://github.com/Jaja091202/Water-Dashboard/blob/main/Settings.png?raw=true")';
         document.getElementById('percentage').style.display = "none"; // Hide it on settings
       }
     }
     </script>
+    
   </body>
 </html>
