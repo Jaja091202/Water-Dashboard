@@ -482,9 +482,9 @@ void setup() {
     lcd.print("Water Management");
     lcd.setCursor(0, 1);
     lcd.print("Initializing...");
-    delay(2000);
+    delay(3000);
     lcd.clear();
-    lcd.setCursor(0, 0);
+    lcd.setCursor(0, 3);
     lcd.print("Connecting to WiFi");
 
     pinMode(LED_BUILTIN, OUTPUT);
@@ -507,6 +507,7 @@ void setup() {
         Serial.println("Connecting to WiFi...");
     }
     Serial.println("Connected to WiFi");
+    lcd.clear();
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send_P(200, "text/html", index_html);
@@ -539,6 +540,7 @@ void setup() {
     server.begin();
     Serial.println("HTTP server started");
     Serial.println(WiFi.localIP());
+    
 }
 
 
@@ -570,7 +572,7 @@ void loop() {
         Serial.print(totalLitres);
         Serial.println(" L");
 
-        lcd.clear();
+        
         lcd.setCursor(0,0);
         lcd.print("Flow rate:");
         lcd.setCursor(11,0);
