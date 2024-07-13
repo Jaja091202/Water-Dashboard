@@ -6,10 +6,10 @@
 const char* ssid = "Jaja";
 const char* password = "jamessss";
 
-const int valvePin = 15;
+const int valvePin = 10;
 
 #define LED_BUILTIN 16
-#define SENSOR 2
+#define SENSOR 15
 
 LiquidCrystal_I2C lcd(0x27,20,4); 
 long currentMillis = 0;
@@ -377,27 +377,33 @@ const char index_html[] PROGMEM = R"rawliteral(
                 style="padding: 8px; margin-bottom: 401.5px; width: 178px; margin-left: -5px; height: 51.7778px; margin-top: 40.6889px;">
               </button>&nbsp;<br>
             </td>
-            <td style=" height: 513px; margin-left: -81px; width: 414px;"> 
-    <label for="waterQuotaInput" style="color: white;">Water Quota:</label>
-    <input id="waterQuotaInput" value="100" type="number">
-    <br><br><br>
-    <form id="waterQuotaForm">
-        <b><button type="button" onclick="updateWaterQuota()" style="position: absolute; margin-top: 201px; top: 433px; left: 433px; font-family: Cambria Math;">SAVE</button></b>
-    </form>
-    <script>
-        function updateWaterQuota() {
-            const newQuota = document.getElementById('waterQuotaInput').value;
-            fetch(`/updateWaterQuota?quota=${newQuota}`)
-                .then(response => response.text())
-                .then(data => {
-                    console.log('Water quota updated:', data);
-                    waterQuota = parseInt(newQuota, 10);
-                    updateChart();
-                })
-                .catch(error => console.error('Error updating water quota:', error));
-        }
-    </script>
-</td>
+            <td style=" height: 513px; margin-left: -81px; width: 414px;"> <label
+
+                for="waterQuotaInput" style="color: white;">Water Quota:</label>
+              <input id="waterQuotaInput" value="100" type="number"> <br>
+              <br>
+              <br>
+              <form id="waterQuotaForm"> <b><button type="button" onclick="updateWaterQuota()"
+
+                    style="position: absolute; margin-top: 201px; top: 433px; left: 433px; font-family: Cambria Math;">SAVE</button></b>
+              </form>
+              <script>
+                  function updateWaterQuota() {
+                      const newQuota = document.getElementById('waterQuotaInput').value;
+                      fetch(`/updateWaterQuota?quota=${newQuota}`)
+                          .then(response => response.text())
+                          .then(data => {
+                              console.log('Water quota updated:', data);
+                              waterQuota = parseInt(newQuota, 10);
+                              updateChart();
+                          })
+                          .catch(error => console.error('Error updating water quota:', error));
+                  }
+              </script> </td>
+            <td style="height: 513px; width: 401.067px;"><br>
+            </td>
+            <td style="height: 513px; margin-left: -24px; width: 413.867px;"><br>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -544,6 +550,8 @@ void loop() {
         totalMilliLitres += flowMilliLitres;
         totalLitres += flowLitres;
 
+        
+
         Serial.print("Flow rate: ");
         Serial.print(flowRate);
         Serial.print(" L/min");
@@ -560,19 +568,19 @@ void loop() {
         lcd.setCursor(11,0);
         lcd.print(flowRate);
         lcd.setCursor(15,0);
-        lcd.print(" L/min");
+        lcd.print("L/min");
         lcd.setCursor(0,1);
         lcd.print("Volume:");
         lcd.setCursor(8, 1);
-        lcd.print(String(totalLitres) + " L");
+        lcd.print(String(totalLitres) + "L");
         lcd.setCursor(0, 2);
         lcd.print("Cost:");
         lcd.setCursor(6, 2);
         lcd.print("Php " + String(totalLitres*0.06));
         lcd.setCursor(0, 3);
-        lcd.print("Quota:");
-        lcd.setCursor(7, 3);
-        lcd.print(String(waterQuota-totalLitres) + "L left");
+        lcd.print("Liters left:");
+        lcd.setCursor(12, 3);
+        lcd.print(String(waterQuota-totalLitres));
 
     }
 }
