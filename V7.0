@@ -1,0 +1,668 @@
+#include <LiquidCrystal_I2C.h>
+#include <ESP8266WiFi.h>
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+
+const char* ssid = "Jaja";
+const char* password = "jamessss";
+
+const int valvePin = 10;
+
+#define LED_BUILTIN 16
+#define SENSOR 14
+
+LiquidCrystal_I2C lcd(0x27,20,4); 
+long currentMillis = 0;
+long previousMillis = 0;
+int interval = 1000;
+boolean ledState = LOW;
+float calibrationFactor = 4.5;
+volatile byte pulseCount;
+byte pulse1Sec = 0;
+float flowRate;
+unsigned long flowMilliLitres;
+unsigned int totalMilliLitres;
+float flowLitres;
+float totalLitres;
+int waterQuota = 100;
+
+AsyncWebServer server(80);
+
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Version 2.0</title>
+    <style>
+        body {
+            background-image: url('https://github.com/Jaja091202/Water-Dashboard/blob/main/Official%20Dashboard.png?raw=true');
+            background-size: cover;
+            background-repeat: no-repeat;
+            margin-top: 0px;
+            height: 657px;
+            width: 1382.4px;
+        }
+        .content {
+            display: none;
+            text-align: center;
+        }
+        .active {
+            display: block;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: transparent;
+            border: none;
+        }
+        .button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+  </head>
+  <body>
+    <div id="dashboard" class="content active">
+      <style>
+            #chart {
+                width: 400px;
+                height: 200px;
+            }
+            .bar {
+                fill: steelblue;
+                width: 40px;
+                margin: 1px;
+            }
+            .tick line, path {
+                stroke: white !important;
+            }
+            .bar-label {
+                text-anchor: middle;
+                fill: white;
+                font-family: sans-serif;
+            }
+            .axis text {
+                fill: white !important;
+            }
+            .tick text {
+                fill: white;
+            }
+            .axis text {
+                font-family: sans-serif;
+                font-size: 12px;
+                fill: white;
+            }
+            .axis path, .axis line {
+                stroke: white;
+            }
+            .tick text {
+                fill: white;
+            }
+        </style>
+      <table style="width: 1528px; height: 710px;" border="0">
+        <tbody style="height: 704.4px;">
+          <tr>
+            <td style="width: 221px; height: 416.556px;"> <button onclick="showPage('settings')"
+
+                style="margin-left: 1.25px; width: 169px; height: 42.25px; margin-top: 8.75px;">
+              </button> <br>
+            </td>
+            <td style="height: 416.556px; width: 391px; margin-left: 50px;" rowspan="1" colspan="2">
+    <div id="chart" style="width: 691px; height: 216.556px; margin-top: 170.005px; margin-left: 93.339px;"></div>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script>
+        let chart;
+        document.addEventListener('DOMContentLoaded', function () {
+            chart = Highcharts.chart('chart', {
+                chart: {
+                    type: 'spline',
+                    backgroundColor: 'transparent'
+                },
+                title: {
+                    text: ''
+                },
+                xAxis: {
+                    type: 'datetime',
+                    tickPixelInterval: 1000,
+                    labels: {
+                        style: {
+                            color: '#FFFFFF'
+                        },
+                        format: '{value:%H:%M:%S}'
+                    },
+                    dateTimeLabelFormats: {
+                        second: '%H:%M:%S'
+                    }
+                },
+                yAxis: {
+                    title: {
+                        text: 'Flow Rate (L/min)',
+                        style: {
+                            color: '#FFFFFF'
+                        }
+                    },
+                    labels: {
+                        style: {
+                            color: '#FFFFFF'
+                        }
+                    }
+                },
+                series: [{
+                    name: 'Flow Rate',
+                    data: [],
+                    color: '#41B8D5',
+                    lineWidth: 0 // Adjust the thickness here
+                }],
+                plotOptions: {
+                    spline: {
+                        marker: {
+                            enabled: false
+                        }
+                    }
+                },
+                credits: {
+                    enabled: false
+                },
+                legend: {
+                    enabled: false
+                }
+            });
+
+            setInterval(updateChart, 1000);
+
+            function updateChart() {
+                fetch('/flowRate')
+                    .then(response => response.json())
+                    .then(data => {
+                        const time = (new Date()).getTime();
+                        const shift = chart.series[0].data.length > 15;
+                        chart.series[0].addPoint([time, data.flowRate], true, shift);
+                    });
+            }
+        });
+    </script>
+    <br>
+</td>
+
+
+            <td style="height: 416.556px; width: 405px; margin-left: 12px; text-align: center;">
+              <h2 style="width: 350px; height: 35.1111px; margin-top: 112.206px; margin-left: 49.4389px; font-size: 45px; text-align: center; color: white;">
+                ₱<span id="calculatedAmount">0.00</span> </h2>
+              <p><br>
+              </p>
+              <p style="text-align: left; margin-left: 58.8944px; color:white;">
+                <span class="OYPEnA text-decoration-none text-strikethrough-none"
+
+                  id="dateRange1"> June 01, 2024 - July 01, 2024 </span> </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="height: 279.333px;"><br>
+            </td>
+            <td style="height: 279.333px; width: 387px; margin-left: 21px; text-align: center;">
+              <h2 style="width: 305.556px; height: 38.8889px; margin-top: 46.6444px; margin-left: 82.7777px; font-size: 40px; text-align: center; color: white;">
+                <span id="liters">0.00</span> l </h2>
+              <p style="margin-top: 3.77219px; height: 22.1111px; margin-left: 80px; width: 305.778px; color:white;">
+                <span class="OYPEnA text-decoration-none text-strikethrough-none"
+
+                  id="dateRange2"> As of July 01 - 08, 2024 </span> </p>
+            </td>
+            <td style="height: 279.333px; margin-left: 20px; width: 352px;">
+              <style>
+        #pieChart {
+            height: 130px !important;
+            width: 130px !important;
+        }
+    </style> <canvas id="pieChart" style="margin-top: 85px; margin-left: 45.5444px;"></canvas>
+              <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+              <script>
+        let waterQuota = 100; // Total water quota
+        let waterUsed = 0;   // Water already used
+        let pieChart; // Variable to store the chart instance
+
+        function updateChart() {
+    const waterRemaining = waterQuota - waterUsed;
+    const ctx = document.getElementById('pieChart').getContext('2d');
+
+    // If chart already exists, destroy it before creating a new one
+    if (pieChart) {
+        pieChart.destroy();
+    }
+
+    pieChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            datasets: [{
+                data: [waterRemaining, waterUsed],
+                backgroundColor: ['#31356E', '#41B8D5'],
+            }]
+        },
+        options: {
+            animation: false, // Disable animation
+            layout: {
+                padding: 0
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+
+                            if (context.parsed.y !== null) {
+                                label += ` ${context.raw}`;
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    const percentageRemaining = (waterRemaining / waterQuota) * 100;
+    const percentageElement = document.getElementById('percentage');
+    percentageElement.textContent = `${percentageRemaining.toFixed(0)}%`;
+}
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const percentageElement = document.createElement('div');
+            percentageElement.id = 'percentage';
+            percentageElement.style = "position: absolute; width: 100; top: 74%; left: 59.5%; font-size: 45px; text-align: center; color: white;";
+            document.body.appendChild(percentageElement);
+
+            updateChart();
+        });
+    </script> <br>
+            </td>
+            <td style="height: 279.333px; margin-left: 10px; margin-top: 30px; text-align: center;">
+              <style>
+        .log {
+            padding: 12px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            width: 310px;
+            height: var(--log-height, 5px);
+            margin-top: var(--log-margin-top, 1px);
+            margin-left: 44px;
+            margin-bottom: var(--log-margin-bottom, -5px);
+            margin-right: var(--log-margin-right, 0);
+            color: white;
+        }
+        .log-date, .log-time {
+            white-space: nowrap;
+        }
+        .valve-status {
+            cursor: pointer;
+            text-align: center;
+            padding: 28px;
+            margin-bottom: 0px;
+            margin-top: 26px;
+            margin-left: -15px;
+            font-size: 25px;
+            text-align: center;
+            color: white;
+        }
+    </style>
+              <div class="logs"></div>
+              <div class="valve-status" id="valveStatus">Turn ON Valve</div>
+              <script>
+        const valveStatus = document.getElementById('valveStatus');
+        const logs = document.querySelector('.logs');
+        let logsArray = [
+            { start: '-', end: '-' },
+            { start: '-', end: '-' },
+            { start: '-', end: '-' },
+            { start: '-', end: '-' },
+            { start: '-', end: '-' },
+            { start: '-', end: '-' },
+            { start: '-', end: '-' }
+        ];
+        let valveOn = false;
+
+        valveStatus.addEventListener('click', function() {
+            fetch('/controlValve?action=' + (valveOn ? 'off' : 'on'))
+                .then(response => response.text())
+                .then(data => {
+                    console.log(data); // Output server response to console
+                    // Optionally update UI or perform other actions based on response
+
+                    valveOn = !valveOn;
+                    const date = new Date();
+                    const dateString = date.toLocaleDateString();
+                    const timeString = date.toLocaleTimeString();
+                    const logText = `${dateString} ${timeString}`;
+                    if (valveOn) {
+                        logsArray.push({ start: logText, end: '-' });
+                        valveStatus.textContent = "Turn OFF Valve";
+                    } else {
+                        logsArray[logsArray.length - 1].end = timeString.replace(/ [AP]M/, '');
+                        valveStatus.textContent = "Turn ON Valve";
+                    }
+                    if (logsArray.length > 7) {
+                        logsArray.shift();
+                    }
+                    displayLogs();
+                    localStorage.setItem('logs', JSON.stringify(logsArray));
+                })
+                .catch(error => console.error('Error:', error));
+        });
+
+        function displayLogs() {
+            logs.innerHTML = '';
+            for (let log of logsArray) {
+                const logDiv = document.createElement('div');
+                logDiv.classList.add('log');
+                const dateSpan = document.createElement('span');
+                dateSpan.textContent = log.start.split(' ')[0];
+                dateSpan.classList.add('log-date');
+                const timeSpan = document.createElement('span');
+                timeSpan.textContent = `${log.start.split(' ')[1] || '-'} - ${log.end || '-'}`;
+                timeSpan.classList.add('log-time');
+                logDiv.appendChild(dateSpan);
+                logDiv.appendChild(timeSpan);
+                logs.appendChild(logDiv);
+            }
+        }
+
+        const storedLogs = localStorage.getItem('logs');
+        if (storedLogs) {
+            logsArray = JSON.parse(storedLogs);
+        }
+        displayLogs();
+    </script>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="settings" class="content ">
+      <table style="width: 1526px; height: 712px;" border="0">
+        <tbody>
+          <tr>
+            <td style="height: 513px; width: 252px;"><button onclick="showPage('dashboard')"
+
+                style="padding: 8px; margin-bottom: 401.5px; width: 178px; margin-left: -5px; height: 51.7778px; margin-top: 40.6889px;">
+              </button>&nbsp;<br>
+            </td>
+            <td style=" height: 513px; margin-left: -81px; width: 414px;"> <label
+
+                for="waterQuotaInput" style="color: white;">Water Quota:</label>
+             <input id="waterQuotaInput" value="100" type="number" max="999999"> <br>
+              <br>
+              <br>
+              <form id="waterQuotaForm"> <b><button type="button" onclick="updateWaterQuota()"
+
+                    style="position: absolute; margin-top: 201px; top: 433px; left: 433px; font-family: Cambria Math;">SAVE</button></b>
+              </form>
+              <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const waterQuotaInput = document.getElementById('waterQuotaInput');
+
+    waterQuotaInput.addEventListener('input', function() {
+      if (waterQuotaInput.value > 999999) {
+        waterQuotaInput.value = 999999;
+      }
+    });
+  });
+
+  function updateWaterQuota() {
+    const newQuota = document.getElementById('waterQuotaInput').value;
+
+    fetch(`/updateWaterQuota?quota=${newQuota}`)
+      .then(response => response.text())
+      .then(data => {
+        console.log('Water quota updated:', data);
+        waterQuota = parseInt(newQuota, 10);
+        updateChart();
+      })
+      .catch(error => console.error('Error updating water quota:', error));
+  }
+</script> </td>
+            <td style="height: 513px; width: 401.067px;"><br>
+            </td>
+            <td style="height: 513px; margin-left: -24px; width: 413.867px;"><br>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <script>
+        function showPage(page) {
+      document.querySelectorAll('.content').forEach(function(el) {
+        el.classList.remove('active');
+      });
+      document.getElementById(page).classList.add('active');
+      if (page === 'dashboard') {
+        document.body.style.backgroundImage = 'url("https://github.com/Jaja091202/Water-Dashboard/blob/main/Official%20Dashboard.png?raw=true")';
+        document.getElementById('percentage').style.display = "block"; // Show it on the dashboard
+      } else if (page === 'settings') {
+        document.body.style.backgroundImage = 'url("https://github.com/Jaja091202/Water-Dashboard/blob/main/Settings.png?raw=true")';
+        document.getElementById('percentage').style.display = "none"; // Hide it on settings
+      }
+    }
+      // Variables
+        var liters = 0.00; // Initialize liters with a default value
+
+    
+        var dateRange1 = 'June 01, 2024 - July 01, 2024'; // Change this value to update the first date range
+        var dateRange2 = 'As of July 01 - 08, 2024'; // Change this value to update the second date range
+
+        function updateTotalLitres() {
+    fetch("/totalLitres")
+        .then(response => response.text())
+        .then(data => {
+            const totalLitres = parseFloat(data); // Parse fetched data as a float
+            liters = totalLitres; // Update liters with fetched value
+            waterUsed = totalLitres; // Update waterUsed with fetched value
+            updateDisplayedValues(); // Call function to update displayed values
+            updateChart(); // Update the pie chart with new waterUsed value
+        })
+        .catch(error => {
+            console.error('Error fetching totalLitres:', error);
+        });
+
+    }
+
+    // Function to update displayed values
+    function updateDisplayedValues() {
+        // Calculations based on updated liters value
+        var calculatedAmount = (liters * 0.06).toFixed(2);
+
+        // Updating the HTML with variables
+        document.getElementById('liters').innerText = liters.toFixed(2);
+        document.getElementById('calculatedAmount').innerText = calculatedAmount;
+    }
+
+    // Fetch totalLitres initially and then at intervals
+    updateTotalLitres(); // Fetch initially
+    setInterval(updateTotalLitres, 1000); // Fetch every 1 second
+
+        
+
+    
+      document.getElementById('dateRange1').innerText = dateRange1;
+        document.getElementById('dateRange2').innerText = dateRange2;
+    </script>
+    
+  </body>
+</html>
+
+)rawliteral"; 
+
+void IRAM_ATTR pulseCounter() {
+    pulseCount++;
+}
+
+void setup() {
+    Serial.begin(115200);
+
+    lcd.init();
+    lcd.backlight();
+    delay(3000);
+    lcd.setCursor(6, 1);
+    lcd.print("BiniTank");
+    lcd.setCursor(1, 2);
+    lcd.print("PROJECT CHECKPOINT");
+    delay(5000);
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("MEMBERS:");
+    lcd.setCursor(1, 1);
+    lcd.print("Aguila, VIJ");
+    lcd.setCursor(1, 2);
+    lcd.print("Flores, SALM");
+    lcd.setCursor(1, 3);
+    lcd.print("Gacusan, JKG");
+    delay(5000);
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("MEMBERS:");
+    lcd.setCursor(1, 1);
+    lcd.print("Javierto, CAR");
+    lcd.setCursor(1, 2);
+    lcd.print("Macatangay, EJR");
+    lcd.setCursor(1, 3);
+    lcd.print("Solis, LV");
+
+    delay(5000);
+    lcd.clear();
+    lcd.setCursor(0, 1);
+    lcd.print("Connecting to WiFi");
+
+    pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(SENSOR, INPUT_PULLUP);
+    pinMode(valvePin, OUTPUT);
+    digitalWrite(valvePin, LOW); // Ensure valve starts in OFF state
+
+    pulseCount = 0;
+    flowRate = 0.0;
+    flowMilliLitres = 0;
+    totalMilliLitres = 0;
+    totalLitres = 0;
+    previousMillis = 0;
+
+    attachInterrupt(digitalPinToInterrupt(SENSOR), pulseCounter, FALLING);
+
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(1000);
+        Serial.println("Connecting to WiFi...");
+    }
+    Serial.println("Connected to WiFi");
+    
+    lcd.clear();
+
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/html", index_html);
+    });
+
+    server.on("/totalLitres", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/plain", String(totalLitres).c_str());
+    });
+
+    server.on("/flowRate", HTTP_GET, [](AsyncWebServerRequest *request){
+    String json = "{\"flowRate\":" + String(flowRate) + "}";
+    request->send(200, "application/json", json);
+    });
+
+    server.on("/updateWaterQuota", HTTP_GET, [] (AsyncWebServerRequest *request) {
+        String quota = request->arg("quota");
+        waterQuota = quota.toInt();
+        
+        request->send(200, "text/plain", "Water quota updated");
+        lcd.clear();
+    });
+
+
+    server.on("/controlValve", HTTP_GET, [] (AsyncWebServerRequest *request) {
+        String action = request->arg("action");
+        if (action == "on") {
+            digitalWrite(valvePin, HIGH); // Turn valve ON
+            request->send(200, "text/plain", "Valve turned ON");
+        } else if (action == "off") {
+            digitalWrite(valvePin, LOW); // Turn valve OFF
+            request->send(200, "text/plain", "Valve turned OFF");
+        } else {
+            request->send(400, "text/plain", "Invalid action");
+        }
+    });
+
+    server.begin();
+    Serial.println("HTTP server started");
+    Serial.println(WiFi.localIP());
+
+    
+    lcd.setCursor(0, 1);
+    lcd.print("Connected to Wifi");
+    lcd.setCursor(0, 2);
+    lcd.print("IP: ");
+    lcd.setCursor(4, 2);
+    lcd.print(WiFi.localIP());
+    delay(5000);
+    lcd.clear();
+    
+}
+
+
+void loop() {
+    currentMillis = millis();
+    if (currentMillis - previousMillis > interval) {
+        pulse1Sec = pulseCount;
+        pulseCount = 0;
+
+        flowRate = ((1000.0 / (millis() - previousMillis)) * pulse1Sec) / calibrationFactor;
+        previousMillis = millis();
+
+        flowMilliLitres = (flowRate / 60) * 1000;
+        flowLitres = (flowRate / 60);
+
+        totalMilliLitres += flowMilliLitres;
+        totalLitres += flowLitres;
+
+        
+
+        Serial.print("Flow rate: ");
+        Serial.print(flowRate);
+        Serial.print(" L/min");
+        Serial.print("\t");
+
+        Serial.print("Output Liquid Quantity: ");
+        Serial.print(totalMilliLitres);
+        Serial.print(" mL / ");
+        Serial.print(totalLitres);
+        Serial.println(" L");
+
+        
+        lcd.setCursor(0,0);
+        lcd.print("Flow rate:");
+        lcd.setCursor(11,0);
+        lcd.print(flowRate);
+        lcd.setCursor(15,0);
+        lcd.print("L/min");
+        lcd.setCursor(0,1);
+        lcd.print("Volume:");
+        lcd.setCursor(8, 1);
+        lcd.print(String(totalLitres) + "L");
+        lcd.setCursor(0, 2);
+        lcd.print("Cost:");
+        lcd.setCursor(6, 2);
+        lcd.print("Php " + String(totalLitres*0.06));
+        lcd.setCursor(0, 3);
+        lcd.print("Liters left:");
+        lcd.setCursor(13, 3);
+        lcd.print(String((waterQuota - totalLitres)));
+
+
+    }
+}
+
+
