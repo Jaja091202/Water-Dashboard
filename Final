@@ -885,8 +885,8 @@ void loop() {
         flowRate = ((1000.0 / (millis() - previousMillis)) * pulse1Sec) / calibrationFactor;
         previousMillis = millis();
 
-        flowMilliLitres = (flowRate / 60) * 1000;
-        flowLitres = (flowRate / 60);
+        flowMilliLitres = (flowRate / 120) * 1000;
+        flowLitres = (flowRate / 120);
 
         totalMilliLitres += flowMilliLitres;
         totalLitres += flowLitres;
