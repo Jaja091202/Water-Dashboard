@@ -4,8 +4,8 @@
 #include <ESPAsyncWebServer.h>
 #include <EEPROM.h>
 
-const char* ssid     = "Virus4";
-const char* password = "bayani1234";
+const char* ssid     = "Jaja";
+const char* password = "jamessss";
 
 const int valvePin = 10;
 const int EEPROM_SIZE = 512;
@@ -24,7 +24,7 @@ long currentMillis = 0;
 long previousMillis = 0;
 int interval = 1000;
 boolean ledState = LOW;
-float calibrationFactor = 4.5;
+float calibrationFactor = 7.125;
 volatile byte pulseCount;
 byte pulse1Sec = 0;
 float flowRate;
@@ -78,24 +78,24 @@ const char index_html[] PROGMEM = R"rawliteral(
       }
     </style>
   </head>
-  <body style="width: 1220.89px; height: 337px;">
+  <body style="   width: 1220.89px; height: 337px;">
     <div id="login" class="content active">
       <form id="loginForm" style="text-align: center; margin-top: 200px;">
         <h2> </h2>
         <input id="username" placeholder="Username" required="" style="position: absolute; left: 600px; width: 318px; top: 267px; height: 24px;"
 
-        type="text"> <br>
-      <br>
-      <input id="password" placeholder="Password" required="" style="position: absolute; left: 600px; width: 318px; top: 313px; height: 24px;"
+          type="text"> <br>
+        <br>
+        <input id="password" placeholder="Password" required="" style="position: absolute; left: 600px; width: 318px; top: 313px; height: 24px;"
 
-        type="password"> <br>
-      <br>
+          type="password"> <br>
+        <br>
         <br>
         <button type="submit" style="position: absolute; top: 394px; left: 686px; margin-left: -45.5556px; width: 257.222px; height: 53px;"></button>
-      <p id="loginError" style="color: red; display: none;"> </p>
+        <p id="loginError" style="color: red; display: none;"> </p>
       </form>
     </div>
-    <div id="dashboard" class="content">
+    <div id="dashboard" class="content ">
       <style>
         #chart {
           width: 400px;
@@ -311,115 +311,112 @@ const char index_html[] PROGMEM = R"rawliteral(
               </script> <br>
             </td>
             <td style="height: 279.333px; margin-left: 10px; margin-top: 30px; text-align: center;">
-              <style>
-                .log {
-                  padding: 12px;
-                  margin-bottom: 5px;
-                  display: flex;
-                  justify-content: space-between;
-                  width: 310px;
-                  height: var(--log-height, 5px);
-                  margin-top: var(--log-margin-top, 1px);
-                  margin-left: 44px;
-                  margin-bottom: var(--log-margin-bottom, -5px);
-                  margin-right: var(--log-margin-right, 0);
-                  color: white;
-                }
+    <style>
+        .log {
+            padding: 12px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            width: 310px;
+            height: var(--log-height, 5px);
+            margin-top: var(--log-margin-top, 1px);
+            margin-left: 44px;
+            margin-bottom: var(--log-margin-bottom, -5px);
+            margin-right: 0;
+            color: white;
+        }
 
-                .log-date,
-                .log-time {
-                  white-space: nowrap;
-                }
+        .log-date,
+        .log-time {
+            white-space: nowrap;
+        }
 
-                .valve-status {
-                  cursor: pointer;
-                  text-align: center;
-                  padding: 28px;
-                  margin-bottom: 0px;
-                  margin-top: 26px;
-                  margin-left: -15px;
-                  font-size: 25px;
-                  text-align: center;
-                  color: white;
+        .valve-status {
+            text-align: center;
+            padding: 28px;
+            margin-bottom: 0;
+            margin-top: 26px;
+            margin-left: -15px;
+            font-size: 25px;
+            color: white;
+        }
+    </style>
+    <div class="logs"></div>
+    <div class="valve-status" id="valveStatus">The Valve is Close</div>
+    <script>
+        const valveStatus = document.getElementById('valveStatus');
+        const logs = document.querySelector('.logs');
+        let logsArray = [{ start: '-', end: '-' }, { start: '-', end: '-' }, { start: '-', end: '-' }, { start: '-', end: '-' }, { start: '-', end: '-' }, { start: '-', end: '-' }, { start: '-', end: '-' }];
+        let isFlowing = false;
+
+        function updateLogs(flowRate) {
+            const date = new Date();
+            const dateString = date.toLocaleDateString();
+            const timeString = date.toLocaleTimeString();
+
+            if (flowRate > 0) {
+                if (!isFlowing) {
+                    isFlowing = true;
+                    logsArray.push({ start: `${dateString} ${timeString}`, end: '-' });
+                    valveStatus.textContent = "The Valve is Open";
                 }
-              </style>
-              <div class="logs"></div>
-              <div class="valve-status" id="valveStatus">Turn ON Valve</div>
-              <script>
-                const valveStatus = document.getElementById('valveStatus');
-                const logs = document.querySelector('.logs');
-                let logsArray = [{
-                  start: '-',
-                  end: '-'
-                }, {
-                  start: '-',
-                  end: '-'
-                }, {
-                  start: '-',
-                  end: '-'
-                }, {
-                  start: '-',
-                  end: '-'
-                }, {
-                  start: '-',
-                  end: '-'
-                }, {
-                  start: '-',
-                  end: '-'
-                }, {
-                  start: '-',
-                  end: '-'
-                }];
-                let valveOn = false;
-                valveStatus.addEventListener('click', function() {
-                  fetch('/controlValve?action=' + (valveOn ? 'off' : 'on')).then(response => response.text()).then(data => {
-                    console.log(data); // Output server response to console
-                    // Optionally update UI or perform other actions based on response
-                    valveOn = !valveOn;
-                    const date = new Date();
-                    const dateString = date.toLocaleDateString();
-                    const timeString = date.toLocaleTimeString();
-                    const logText = `${dateString} ${timeString}`;
-                    if (valveOn) {
-                      logsArray.push({
-                        start: logText,
-                        end: '-'
-                      });
-                      valveStatus.textContent = "Turn OFF Valve";
-                    } else {
-                      logsArray[logsArray.length - 1].end = timeString.replace(/ [AP]M/, '');
-                      valveStatus.textContent = "Turn ON Valve";
-                    }
-                    if (logsArray.length > 7) {
-                      logsArray.shift();
-                    }
-                    displayLogs();
-                    localStorage.setItem('logs', JSON.stringify(logsArray));
-                  }).catch(error => console.error('Error:', error));
+            } else {
+                if (isFlowing) {
+                    isFlowing = false;
+                    logsArray[logsArray.length - 1].end = timeString.replace(/ [AP]M/, '');
+                    valveStatus.textContent = "The Valve is Close";
+                }
+            }
+
+            if (logsArray.length > 7) {
+                logsArray.shift();
+            }
+
+            displayLogs();
+            localStorage.setItem('logs', JSON.stringify(logsArray));
+        }
+
+        function displayLogs() {
+            logs.innerHTML = '';
+            for (let log of logsArray) {
+                const logDiv = document.createElement('div');
+                logDiv.classList.add('log');
+                const dateSpan = document.createElement('span');
+                dateSpan.textContent = log.start.split(' ')[0];
+                dateSpan.classList.add('log-date');
+                const timeSpan = document.createElement('span');
+                timeSpan.textContent = `${log.start.split(' ')[1] || '-'} - ${log.end || '-'}`;
+                timeSpan.classList.add('log-time');
+                logDiv.appendChild(dateSpan);
+                logDiv.appendChild(timeSpan);
+                logs.appendChild(logDiv);
+            }
+        }
+
+        function resetLogs() {
+            logsArray = [{ start: '-', end: '-' }, { start: '-', end: '-' }, { start: '-', end: '-' }, { start: '-', end: '-' }, { start: '-', end: '-' }, { start: '-', end: '-' }, { start: '-', end: '-' }];
+            displayLogs();
+            localStorage.removeItem('logs');
+        }
+
+        const storedLogs = localStorage.getItem('logs');
+        if (storedLogs) {
+            logsArray = JSON.parse(storedLogs);
+        }
+
+        displayLogs();
+
+        // Fetch flow rate periodically and update logs accordingly
+        setInterval(() => {
+            fetch('/flowRate')
+                .then(response => response.json())
+                .then(data => {
+                    updateLogs(data.flowRate);
                 });
+        }, 1000);
+    </script>
+</td>
 
-                function displayLogs() {
-                  logs.innerHTML = '';
-                  for (let log of logsArray) {
-                    const logDiv = document.createElement('div');
-                    logDiv.classList.add('log');
-                    const dateSpan = document.createElement('span');
-                    dateSpan.textContent = log.start.split(' ')[0];
-                    dateSpan.classList.add('log-date');
-                    const timeSpan = document.createElement('span');
-                    timeSpan.textContent = `${log.start.split(' ')[1] || '-'} - ${log.end || '-'}`;
-                    timeSpan.classList.add('log-time');
-                    logDiv.appendChild(dateSpan);
-                    logDiv.appendChild(timeSpan);
-                    logs.appendChild(logDiv);
-                  }
-                }
-                const storedLogs = localStorage.getItem('logs');
-                if (storedLogs) {
-                  logsArray = JSON.parse(storedLogs);
-                }
-                displayLogs();
-              </script> </td>
           </tr>
         </tbody>
       </table>
@@ -476,6 +473,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     confirmButtonText: 'Yes, reset it!'
   }).then((result) => {
     if (result.isConfirmed) {
+      resetLogs();
       fetch('/resetValues')  // Send request to server to reset values
         .then(response => {
           if (response.ok) {
@@ -629,7 +627,7 @@ const char index_html[] PROGMEM = R"rawliteral(
       // Variables
       var liters = 0.00; // Initialize liters with a default value
       var dateRange1 = 'June 01, 2024 - July 01, 2024'; // Change this value to update the first date range
-      var dateRange2 = 'As of July 01 - 08, 2024'; // Change this value to update the second date range
+      var dateRange2 = ''; // Change this value to update the second date range
       function updateTotalLitres() {
         fetch("/totalLitres").then(response => response.text()).then(data => {
           const totalLitres = parseFloat(data); // Parse fetched data as a float
@@ -641,10 +639,23 @@ const char index_html[] PROGMEM = R"rawliteral(
           console.error('Error fetching totalLitres:', error);
         });
       }
+      function updateDateRange1() {
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth();
+        
+        const startDate = new Date(currentYear, currentMonth, 1);
+        const endDate = new Date(currentYear, currentMonth + 1, 1);
+        
+        const startStr = startDate.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+        const endStr = endDate.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+        
+        document.getElementById('dateRange1').textContent = `${startStr} - ${endStr}`;
+      }
       // Function to update displayed values
       function updateDisplayedValues() {
         // Calculations based on updated liters value
-        var calculatedAmount = (liters * 0.06).toFixed(2);
+        var calculatedAmount = (liters * 0.02591).toFixed(2);
         // Updating the HTML with variables
         document.getElementById('liters').innerText = liters.toFixed(2);
         document.getElementById('calculatedAmount').innerText = calculatedAmount;
@@ -654,10 +665,15 @@ const char index_html[] PROGMEM = R"rawliteral(
       setInterval(updateTotalLitres, 1000); // Fetch every 1 second
       document.getElementById('dateRange1').innerText = dateRange1;
       document.getElementById('dateRange2').innerText = dateRange2;
+
+      document.addEventListener('DOMContentLoaded', (event) => {
+        updateDateRange1();
+      });
     </script>
     
   </body>
 </html>
+
 
 
 )rawliteral"; 
@@ -740,8 +756,8 @@ void setup() {
     delay(3000);
     lcd.setCursor(6, 1);
     lcd.print("BiniTank");
-    lcd.setCursor(1, 2);
-    lcd.print("PROJECT CHECKPOINT");
+    lcd.setCursor(1, 4);
+    lcd.print("FINAL PROJECT");
     delay(5000);
 
     lcd.clear();
@@ -885,8 +901,8 @@ void loop() {
         flowRate = ((1000.0 / (millis() - previousMillis)) * pulse1Sec) / calibrationFactor;
         previousMillis = millis();
 
-        flowMilliLitres = (flowRate / 120) * 1000;
-        flowLitres = (flowRate / 120);
+        flowMilliLitres = (flowRate / 60) * 1000;
+        flowLitres = (flowRate / 60);
 
         totalMilliLitres += flowMilliLitres;
         totalLitres += flowLitres;
